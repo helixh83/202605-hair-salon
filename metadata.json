@@ -1,0 +1,6 @@
+{
+  "name": "HairFit AI",
+  "description": "AI-powered Hair Salon find, face shape hairstyles analysis, events, shop, and personal visit history book.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
