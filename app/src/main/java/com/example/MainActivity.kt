@@ -135,17 +135,17 @@ fun MainContent(viewModel: HairViewModel) {
                     modifier = Modifier.testTag("nav_tab_salons")
                 )
 
-                // 2. 내 얼굴형 사진 업로드
+                // 2. 내 얼굴형 사진 업로드 (AI분석)
                 NavigationBarItem(
                     selected = selectedTab == 1,
                     onClick = { selectedTab = 1 },
                     icon = {
                         Icon(
-                            imageVector = if (selectedTab == 1) Icons.Filled.Face else Icons.Outlined.Face,
-                            contentDescription = "AI 분석"
+                            imageVector = if (selectedTab == 1) Icons.Filled.AutoAwesome else Icons.Outlined.AutoAwesome,
+                            contentDescription = "AI분석"
                         )
                     },
-                    label = { Text("AI 분석", fontSize = 10.sp, fontWeight = FontWeight.Bold) },
+                    label = { Text("AI분석", fontSize = 10.sp, fontWeight = FontWeight.Bold) },
                     modifier = Modifier.testTag("nav_tab_ai_analysis")
                 )
 
@@ -183,7 +183,7 @@ fun MainContent(viewModel: HairViewModel) {
                     onClick = { selectedTab = 4 },
                     icon = {
                         Icon(
-                            imageVector = if (selectedTab == 4) Icons.Filled.AccountCircle else Icons.Outlined.AccountCircle,
+                            imageVector = if (selectedTab == 4) Icons.Filled.Face else Icons.Outlined.Face,
                             contentDescription = "마이샵"
                         )
                     },

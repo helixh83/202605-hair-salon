@@ -175,7 +175,9 @@ class HairViewModel(application: Application) : AndroidViewModel(application) {
                         price = 66000,
                         status = "COMPLETED",
                         notes = "얼굴 비율이 훨씬 훤칠해 보여 무척 마음에 듭니다.",
-                        photoUrl = null
+                        beforePhotoUrl = "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=300",
+                        requestPhotoUrl = "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=300",
+                        afterPhotoUrl = "https://images.unsplash.com/photo-1621252179027-94459d278660?w=300"
                     )
                 )
                 dao.insertVisit(
@@ -187,8 +189,10 @@ class HairViewModel(application: Application) : AndroidViewModel(application) {
                         styleName = "내츄럴 애즈펌 (6:4)",
                         price = 120000,
                         status = "APPROVED",
-                        notes = "원장님의 사진 분석 결과를 토대로 제안받아 예약 승인됨. 5월 27일 14:00 예약된 상태.",
-                        photoUrl = null
+                        notes = "원장님의 제안을 토대로 예약 승인됨. 방문 일정 확정 대기 중.",
+                        beforePhotoUrl = "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300",
+                        requestPhotoUrl = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300",
+                        afterPhotoUrl = null
                     )
                 )
                 dao.insertVisit(
@@ -201,7 +205,9 @@ class HairViewModel(application: Application) : AndroidViewModel(application) {
                         price = 55000,
                         status = "REQUESTED",
                         notes = "AI 헤어스타일 매칭 결과를 헤어더뷰에 시술 요청서로 보냈습니다. (승인 대기 중)",
-                        photoUrl = null
+                        beforePhotoUrl = "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=300",
+                        requestPhotoUrl = "https://images.unsplash.com/photo-1489980508314-941910ded1f4?w=300",
+                        afterPhotoUrl = null
                     )
                 )
             }
@@ -240,17 +246,19 @@ class HairViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // Customer requests appointment with this hairstyle
-    fun submitStylingRequestToSalon(salon: Salon, styleName: String, price: Int, notes: String) {
+    fun submitStylingRequestToSalon(salon: Salon, styleName: String, price: Int, notes: String, beforePhotoUrl: String?, requestPhotoUrl: String?) {
         viewModelScope.launch {
             val newRequest = VisitHistory(
                 salonName = salon.name,
                 visitDate = "2026-05-26",
-                designerName = "현명한 원상 / 유리 담당",
+                designerName = "현명한 원장 / 유리 담당",
                 styleName = styleName,
                 price = price,
                 status = "REQUESTED",
                 notes = notes,
-                photoUrl = null
+                beforePhotoUrl = beforePhotoUrl,
+                requestPhotoUrl = requestPhotoUrl,
+                afterPhotoUrl = null
             )
             dao.insertVisit(newRequest)
         }
@@ -261,6 +269,18 @@ class HairViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val approvedVisit = visit.copy(status = "APPROVED", notes = "미용실에서 고객제안을 확인하고 예약을 최종 승인했습니다! 매장에서 뵙겠습니다.")
             dao.updateVisit(approvedVisit)
+        }
+    }
+
+    // Salon simulation - Designer finishes the session (simulated complete)
+    fun completeStylingRequest(visit: VisitHistory, afterPhoto: String) {
+        viewModelScope.launch {
+            val completedVisit = visit.copy(
+                status = "COMPLETED",
+                notes = "시술이 성공적으로 최종 완료되었습니다! 헤어핏 AI와의 비교 분석이 보관함(마이샵 로그북)에 저장되었습니다.",
+                afterPhotoUrl = afterPhoto
+            )
+            dao.updateVisit(completedVisit)
         }
     }
 

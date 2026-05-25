@@ -13,5 +13,7 @@ data class VisitHistory(
     val price: Int,
     val status: String, // "REQUESTED", "APPROVED", "COMPLETED"
     val notes: String = "",
-    val photoUrl: String? = null
+    val beforePhotoUrl: String? = null,
+    val requestPhotoUrl: String? = null,
+    val afterPhotoUrl: String? = null
 )

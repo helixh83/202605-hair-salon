@@ -318,6 +318,13 @@ fun FindSalonScreen(
 // ==========================================
 // 2. FACE UPLOAD SCREEN (내 얼굴형 사진 업로드 & AI 헤어스타일 제안)
 // ==========================================
+data class AiStyleOption(
+    val name: String,
+    val imageUrl: String,
+    val description: String,
+    val price: Int
+)
+
 @Composable
 fun FaceUploadScreen(
     viewModel: HairViewModel,
@@ -333,13 +340,51 @@ fun FaceUploadScreen(
 
     var showRequestDialog by remember { mutableStateOf(false) }
     var selectedTargetSalon by remember { mutableStateOf<Salon?>(null) }
-    var requestedHairstyle by remember { mutableStateOf("가일컷 & 리백 다운펌") }
-    var userMemo by remember { mutableStateOf("AI가 제안한 얼굴형 분석 맞춤 솔루션을 토대로 볼륨을 채우고 사이드를 완벽하게 다운하고 싶어요.") }
+    var requestedHairstyle by remember { mutableStateOf("트렌디 가일컷 (Gail Cut)") }
+    var userMemo by remember { mutableStateOf("AI가 내 얼굴형을 디코딩해 추천해준 맞춤 헤어 솔루션과 가이드를 확인했습니다. 볼륨감과 사이드 다운펌 시술을 맞춤형으로 부탁드립니다.") }
+
+    var selectedStyleOptionIndex by remember { mutableStateOf(0) }
 
     val context = LocalContext.current
 
     if (salons.isNotEmpty() && selectedTargetSalon == null) {
         selectedTargetSalon = salons.first()
+    }
+
+    val aiStyleOptions = remember(selectedFace, customPhoto) {
+        listOf(
+            AiStyleOption(
+                name = "트렌디 가일컷 (Gail Cut)",
+                imageUrl = if (customPhoto != null) "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=300" else selectedFace?.imageUrlAfter ?: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=300",
+                description = "이마가 시원하게 드러나고 옆머리가 슬림하게 붙어 지적이고 샤프한 세련미",
+                price = 68000
+            ),
+            AiStyleOption(
+                name = "내츄럴 애즈펌 (As Perm)",
+                imageUrl = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300",
+                description = "시스루 분위기에 부드러운 유선형 구도 볼륨과 6:4 가르마 훈남 정석 머리",
+                price = 120000
+            ),
+            AiStyleOption(
+                name = "시스루 댄디컷 (Dandy Cut)",
+                imageUrl = "https://images.unsplash.com/photo-1621252179027-94459d278660?w=300",
+                description = "이마 라인을 가볍게 비추어 무겁지 않고 부드러운 호감도를 주는 댄디컷",
+                price = 55000
+            ),
+            AiStyleOption(
+                name = "클래식 아이비리그 (Ivy Cut)",
+                imageUrl = "https://images.unsplash.com/photo-1489980508314-941910ded1f4?w=300",
+                description = "스포티하며 이목구비가 뚜렷해 보이는 짧은 기장 베이스의 단정 스마트 컷",
+                price = 45000
+            )
+        )
+    }
+
+    // Sync input when index changes
+    LaunchedEffect(selectedStyleOptionIndex) {
+        if (selectedStyleOptionIndex in aiStyleOptions.indices) {
+            requestedHairstyle = aiStyleOptions[selectedStyleOptionIndex].name
+        }
     }
 
     // Dial log container
@@ -416,11 +461,16 @@ fun FaceUploadScreen(
             confirmButton = {
                 Button(
                     onClick = {
+                        val beforeUrl = if (customPhoto != null) "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200" else selectedFace?.imageUrlBefore
+                        val requestUrl = aiStyleOptions.getOrNull(selectedStyleOptionIndex)?.imageUrl
+
                         viewModel.submitStylingRequestToSalon(
                             salon = selectedTargetSalon!!,
                             styleName = requestedHairstyle,
-                            price = 68000,
-                            notes = userMemo
+                            price = aiStyleOptions.getOrNull(selectedStyleOptionIndex)?.price ?: 68000,
+                            notes = userMemo,
+                            beforePhotoUrl = beforeUrl,
+                            requestPhotoUrl = requestUrl
                         )
                         showRequestDialog = false
                         Toast.makeText(context, "미용실에 스타일 제안 및 방문요청 수신을 완료했습니다! [마이샵]에서 예약 승인 상태를 확인해 보세요.", Toast.LENGTH_LONG).show()
@@ -553,16 +603,116 @@ fun FaceUploadScreen(
                 }
             }
 
-            // Active selected layout
+            // [NEW] Various Hairstyle Expression Grid/Carousel
+            Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                SleekCard(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = "STEP 2. AI 가상 스타일링 체험 🔮",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "고객님의 스마트 분석 데이터를 토대로 생성한 4가지 AI 헤어 컬렉션입니다. 마음에 드는 디자인을 선택해보세요.",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Horizontal style options carousel
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            aiStyleOptions.forEachIndexed { index, option ->
+                                val isSelected = index == selectedStyleOptionIndex
+                                Card(
+                                    modifier = Modifier
+                                        .width(130.dp)
+                                        .clickable { selectedStyleOptionIndex = index },
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = if (isSelected) {
+                                            MaterialTheme.colorScheme.secondary.copy(alpha = 0.08f)
+                                        } else {
+                                            MaterialTheme.colorScheme.onBackground.copy(alpha = 0.01f)
+                                        }
+                                    ),
+                                    border = BorderStroke(
+                                        2.dp,
+                                        if (isSelected) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f)
+                                    ),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(8.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(114.dp)
+                                                .clip(RoundedCornerShape(8.dp))
+                                        ) {
+                                            AsyncImage(
+                                                model = option.imageUrl,
+                                                contentDescription = option.name,
+                                                contentScale = ContentScale.Crop,
+                                                modifier = Modifier.fillMaxSize()
+                                            )
+                                            if (isSelected) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .background(MaterialTheme.colorScheme.secondary)
+                                                        .align(Alignment.TopEnd)
+                                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                                ) {
+                                                    Text("선택됨", color = Color.White, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                                                }
+                                            }
+                                        }
+                                        
+                                        Spacer(modifier = Modifier.height(6.dp))
+                                        
+                                        Text(
+                                            text = option.name,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (isSelected) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurface,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        
+                                        Text(
+                                            text = "${option.price}원",
+                                            fontSize = 10.sp,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Comparison Layout Showcase
             Box(modifier = Modifier.padding(horizontal = 16.dp)) {
                 SleekCard(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            text = "분석 대상 얼굴 스크리닝",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                            text = "AI 맞춤 시술 전/후 비교 보드 🔎",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.fillMaxWidth()
                         )
                         
@@ -575,13 +725,13 @@ fun FaceUploadScreen(
                         ) {
                             // Before styling
                             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
-                                Text("시술 전상태 (현재)", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                                Text("① 시술 전 상태", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Box(
                                     modifier = Modifier
                                         .size(110.dp)
                                         .clip(RoundedCornerShape(14.dp))
-                                        .border(1.dp, MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f), RoundedCornerShape(14.dp))
+                                        .border(1.dp, MaterialTheme.colorScheme.onBackground.copy(alpha = 0.2f), RoundedCornerShape(14.dp))
                                 ) {
                                     AsyncImage(
                                         model = if (customPhoto != null) "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200" else selectedFace?.imageUrlBefore,
@@ -589,6 +739,15 @@ fun FaceUploadScreen(
                                         contentScale = ContentScale.Crop,
                                         modifier = Modifier.fillMaxSize()
                                     )
+                                    Box(
+                                        modifier = Modifier
+                                            .background(Color.Black.copy(alpha = 0.5f))
+                                            .align(Alignment.BottomCenter)
+                                            .fillMaxWidth()
+                                            .padding(vertical = 2.dp)
+                                    ) {
+                                        Text("내 얼굴", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                                    }
                                 }
                             }
 
@@ -604,20 +763,29 @@ fun FaceUploadScreen(
 
                             // After style preview matched!
                             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
-                                Text("예상 시술 결과 (매칭)", fontSize = 11.sp, color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold)
+                                Text("② AI 시술요청 매칭", fontSize = 11.sp, color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold)
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Box(
                                     modifier = Modifier
                                         .size(110.dp)
                                         .clip(RoundedCornerShape(14.dp))
-                                        .border(1.5.dp, MaterialTheme.colorScheme.secondary, RoundedCornerShape(14.dp))
+                                        .border(2.dp, MaterialTheme.colorScheme.secondary, RoundedCornerShape(14.dp))
                                 ) {
                                     AsyncImage(
-                                        model = if (customPhoto != null) "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200" else selectedFace?.imageUrlAfter,
-                                        contentDescription = "After face",
+                                        model = aiStyleOptions.getOrNull(selectedStyleOptionIndex)?.imageUrl,
+                                        contentDescription = "AI Styled variant",
                                         contentScale = ContentScale.Crop,
                                         modifier = Modifier.fillMaxSize()
                                     )
+                                    Box(
+                                        modifier = Modifier
+                                            .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.8f))
+                                            .align(Alignment.BottomCenter)
+                                            .fillMaxWidth()
+                                            .padding(vertical = 2.dp)
+                                    ) {
+                                        Text("AI 매칭됨", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                                    }
                                 }
                             }
                         }
@@ -626,11 +794,11 @@ fun FaceUploadScreen(
 
                         Text(
                             text = if (customPhoto != null) {
-                                "고객 업로드 사진 감지: [샤프형 가름 이마라인]"
+                                "고객 업로드 사진 감지: [샤프형 가름 이마라인]\n매칭 스타일: ${aiStyleOptions.getOrNull(selectedStyleOptionIndex)?.name}"
                             } else {
-                                "선택된 가이드: ${selectedFace?.faceShape} \n(${selectedFace?.description})"
+                                "선택 가이드: ${selectedFace?.faceShape} \n매칭 스타일: ${aiStyleOptions.getOrNull(selectedStyleOptionIndex)?.name}"
                             },
-                            fontSize = 13.sp,
+                            fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface,
                             textAlign = TextAlign.Center
@@ -657,7 +825,7 @@ fun FaceUploadScreen(
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = Color.White)
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Text("AI 얼굴형 분석 및 추천 헤어스타일 매칭 받기", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                    Text("AI 분석 리포트 생성 & 추천 솔루션 받기", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
                                 }
                             }
                         }
@@ -723,10 +891,9 @@ fun FaceUploadScreen(
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
+                              ) {
                                 Button(
                                     onClick = {
-                                        requestedHairstyle = if (selectedFace?.id == 2) "내츄럴 애즈펌 (6:4)" else "시스루 댄디컷 & 가일"
                                         showRequestDialog = true
                                     },
                                     modifier = Modifier
@@ -1243,6 +1410,96 @@ fun MyShopScreen(
                                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                                 )
 
+                                // [NEW] 3-Column Image Comparison Grid (전 / 요청 / 후)
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text("📸 AI 헤어핏 히스토리 레코드", fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    // Pre-treatment (Before)
+                                    Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Box(
+                                            modifier = Modifier
+                                                .aspectRatio(1f)
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f))
+                                                .border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f), RoundedCornerShape(8.dp))
+                                        ) {
+                                            if (visit.beforePhotoUrl != null) {
+                                                AsyncImage(
+                                                    model = visit.beforePhotoUrl,
+                                                    contentDescription = "시술 전",
+                                                    contentScale = ContentScale.Crop,
+                                                    modifier = Modifier.fillMaxSize()
+                                                )
+                                            } else {
+                                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                                    Text("미등록", fontSize = 10.sp, color = Color.Gray)
+                                                }
+                                            }
+                                        }
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text("시술전 (My Face)", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                                    }
+
+                                    // Request Style (Requested)
+                                    Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Box(
+                                            modifier = Modifier
+                                                .aspectRatio(1f)
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f))
+                                                .border(1.5.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                                        ) {
+                                            if (visit.requestPhotoUrl != null) {
+                                                AsyncImage(
+                                                    model = visit.requestPhotoUrl,
+                                                    contentDescription = "시술 요청",
+                                                    contentScale = ContentScale.Crop,
+                                                    modifier = Modifier.fillMaxSize()
+                                                )
+                                            } else {
+                                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                                    Text("미등록", fontSize = 10.sp, color = Color.Gray)
+                                                }
+                                            }
+                                        }
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text("시술요청 (AI)", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
+                                    }
+
+                                    // Completed Style (Finished)
+                                    Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Box(
+                                            modifier = Modifier
+                                                .aspectRatio(1f)
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f))
+                                                .border(2.dp, if (visit.afterPhotoUrl != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f), RoundedCornerShape(8.dp))
+                                        ) {
+                                            if (visit.afterPhotoUrl != null) {
+                                                AsyncImage(
+                                                    model = visit.afterPhotoUrl,
+                                                    contentDescription = "시술 완료",
+                                                    contentScale = ContentScale.Crop,
+                                                    modifier = Modifier.fillMaxSize()
+                                                )
+                                            } else {
+                                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                                                        Icon(Icons.Default.HourglassEmpty, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color.Gray)
+                                                        Text("시술 대기중", fontSize = 9.sp, color = Color.Gray)
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text("시술후 (완료)", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = if (visit.afterPhotoUrl != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f))
+                                    }
+                                }
+
                                 if (visit.notes.isNotEmpty()) {
                                     Spacer(modifier = Modifier.height(10.dp))
                                     Box(
@@ -1296,6 +1553,29 @@ fun MyShopScreen(
                                         ) {
                                             Text("거절", fontSize = 11.sp)
                                         }
+                                    }
+                                } else if (adminModeEnabled && isApproved) {
+                                    // Simulated Complete Styling action
+                                    Spacer(modifier = Modifier.height(14.dp))
+                                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f))
+                                    Spacer(modifier = Modifier.height(12.dp))
+
+                                    Button(
+                                        onClick = {
+                                            // Provide styled completed haircut photo (either original styled or preset beautiful style)
+                                            val beautyAfterOption = visit.requestPhotoUrl ?: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=300"
+                                            viewModel.completeStylingRequest(visit, beautyAfterOption)
+                                        },
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(38.dp)
+                                            .testTag("admin_complete_${visit.id}"),
+                                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
+                                        shape = RoundedCornerShape(12.dp)
+                                    ) {
+                                        Icon(Icons.Default.ContentCut, contentDescription = null, modifier = Modifier.size(14.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text("✂️ 최종 시술 완료 (시술후 사진 피팅)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
                                     }
                                 } else if (!adminModeEnabled && isApproved) {
                                     // User visual confirmation
